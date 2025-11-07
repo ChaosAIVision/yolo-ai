@@ -108,10 +108,4 @@ uploads/
 temp/
 tmp/
 
-# Assert (keep structure, ignore large files)
-assert/*.jpeg
-assert/*.jpg
-assert/*.png
-assert/*.mp4
-assert/*.avi
 

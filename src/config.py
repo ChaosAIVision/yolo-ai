@@ -9,7 +9,7 @@ if CUDA_VISIBLE_DEVICES is not None:
 logger = logging.getLogger(__name__)
 
 # Model paths
-MODEL_WEIGHTS_PATH = os.getenv("MODEL_WEIGHTS_PATH", "/home/chaos/Documents/chaos/production/yolo-ai/weights/yolov8n.pt")
+MODEL_WEIGHTS_PATH = os.getenv("MODEL_WEIGHTS_PATH", "/home/chaos/Documents/chaos/production/yolo-ai/weights/best.pt")
 ONNX_OUTPUT_DIR = os.getenv("ONNX_OUTPUT_DIR", "/home/chaos/Documents/chaos/production/yolo-ai/weights/")
 ONNX_OPSET = int(os.getenv("ONNX_OPSET", "17"))
 
@@ -50,11 +50,21 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
+# CLASS_NAMES = {
+
+#     0:"person",
+#     1:"helmet",
+#     2:"vest",
+#     3:"shoes"
+# }
+
+
 CLASS_NAMES = {
-
-    0:"person",
-    1:"helmet",
-    2:"vest",
-    3:"shoes"
+    0:"Dust Mask",
+    1:"Eye Wear",
+    2:"Glove",
+    3:"Jacket",
+    4:"Protective Boots",
+    5:"Protective Helmet",
+    6:"Shield"
 }
-
