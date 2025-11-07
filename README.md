@@ -1,16 +1,15 @@
 # YOLO-AI: High-Performance Real-Time Object Detection Framework
 
-**A production-ready framework for easy deployment, high-quality inference, and fast real-time streaming via WebSocket.**
 
 ---
 
-## 🎯 Overview
+## Overview
 
 YOLO-AI is a complete end-to-end framework for real-time object detection that enables seamless deployment from model training to production. Built with YOLOv8, BentoML, and WebSocket streaming, it delivers high-quality detection results with minimal latency.
 
 ---
 
-## 🔄 Complete Workflow: Train → Convert → Deploy
+## Complete Workflow: Train → Convert → Deploy
 
 ### Workflow Overview
 
@@ -55,7 +54,7 @@ bentoml serve yolov8-service:latest --port 3000
 
 ---
 
-## 🔄 Application Flow: UI → Backend → UI
+## Application Flow: UI → Backend → UI
 
 ### Request Flow Diagram
 
@@ -118,7 +117,7 @@ bentoml serve yolov8-service:latest --port 3000
 
 ---
 
-## 🎨 Frontend Features
+## Frontend Features
 
 ### Feature Overview
 
@@ -152,7 +151,7 @@ bentoml serve yolov8-service:latest --port 3000
 
 ---
 
-## ⚙️ Backend Features
+## Backend Features
 
 ### Core Capabilities
 
@@ -374,7 +373,7 @@ As the number of concurrent users increases, a single server instance may become
 
 ---
 
-## 📊 Example: PPE (Personal Protective Equipment) Detection
+## Example: PPE (Personal Protective Equipment) Detection
 
 ### Use Case
 Detect Personal Protective Equipment (PPE) including:
