@@ -170,26 +170,6 @@ bentoml serve yolov8-service:latest --port 3000
 | `/api/v1/upload` | POST | Upload image for detection | Image file | Annotated JPEG |
 | `/ws/youtube` | WebSocket | YouTube video streaming | YouTube URL | Annotated frames (base64) |
 
-### Backend Architecture
-
-```
-┌─────────────────────────────────────────┐
-│         API Server (aiohttp)            │
-│  - WebSocket Handler                    │
-│  - Image Upload Handler                 │
-│  - CORS Middleware                      │
-└──────────────┬──────────────────────────┘
-               │
-               ├───► YouTubeStreamer
-               │     - yt-dlp (extract URL)
-               │     - ffmpeg (decode stream)
-               │     - Frame processing
-               │
-               └───► BentoML Service
-                     - ONNX Runtime
-                     - YOLO Inference
-                     - Detection results
-```
 
 --
 
