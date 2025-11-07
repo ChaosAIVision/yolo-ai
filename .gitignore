@@ -1,0 +1,117 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Model Weights
+weights/
+*.pt
+*.onnx
+*.trt
+*.pth
+*.h5
+*.pb
+
+# Data
+data/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+
+# Frontend - Node modules
+app/node_modules/
+app/dist/
+app/build/
+app/.vite/
+app/.next/
+app/.nuxt/
+app/.cache/
+
+# Frontend - Build outputs
+app/dist/
+app/build/
+app/.vite/
+app/.next/
+app/.nuxt/
+app/.cache/
+
+# Frontend - Dependencies
+app/package-lock.json
+app/yarn.lock
+app/pnpm-lock.yaml
+
+# Frontend - Environment
+app/.env
+app/.env.local
+app/.env.production
+app/.env.development
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# BentoML
+.bento/
+bentoml/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# Uploads
+uploads/
+temp/
+tmp/
+
+# Assert (keep structure, ignore large files)
+assert/*.jpeg
+assert/*.jpg
+assert/*.png
+assert/*.mp4
+assert/*.avi
+

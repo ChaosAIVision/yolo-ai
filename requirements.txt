@@ -1,0 +1,11 @@
+aiortc
+ultralytics
+torch
+torchvision
+pillow
+numpy
+onnxruntime-gpu
+opencv-python-headless
+bentoml
+aiohttp
+yt-dlp

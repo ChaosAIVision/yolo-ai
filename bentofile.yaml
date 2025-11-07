@@ -1,0 +1,52 @@
+service: "src.deploy.service:svc"
+# New style service with resources={"gpu": 1} configured in YOLOService class
+
+description: "Production YOLOv8 ONNX inference via BentoML"
+labels:
+  owner: production
+  stage: production
+
+include:
+  - "src/**/*.py"
+  - "weights/*.onnx"
+
+envs:
+  - name: default
+    env:
+      # Set CUDA_VISIBLE_DEVICES to limit GPU usage
+      # Default to GPU 1 if not set via environment variable
+      CUDA_VISIBLE_DEVICES: "${CUDA_VISIBLE_DEVICES:-1}"
+      MODEL_WEIGHTS_PATH: "/home/clara/manhhd/yolo_ppe/yolo-ai/weights/yolov8n.pt"
+      ONNX_OUTPUT_DIR: "/home/clara/manhhd/yolo_ppe/yolo-ai/weights"
+      ONNX_OPSET: "17"
+      CONF_THRES: "0.25"
+      IOU_THRES: "0.45"
+      MAX_MP: "12.0"
+      MAX_BATCH: "8"
+      USE_HALF: "1"
+      LOG_LEVEL: "INFO"
+      BENTO_SERVICE_NAME: "yolov8-service"
+      BENTO_MODEL_NAME: "yolov8-onnx"
+    resources:
+      cpu: "2"
+      memory: "2Gi"
+      gpu: "1"  # Limit to 1 GPU to avoid OOM
+
+python:
+  packages:
+    - ultralytics==8.3.5
+    - torch
+    - torchvision
+    - pillow==10.4.0
+    - numpy==1.26.4
+    - onnxruntime-gpu==1.20.0
+    - opencv-python-headless==4.10.0.84
+    - bentoml>=1.0.0
+
+  lock_packages: true
+
+docker:
+  distro: debian
+  setup_script: "docker_setup.sh"
+  python_version: "3.10"
+
