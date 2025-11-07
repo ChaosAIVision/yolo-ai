@@ -325,4 +325,3 @@ yolo-ai/
 
 ---
 
-**Built with ❤️ for production-ready object detection**
