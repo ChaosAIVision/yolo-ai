@@ -142,18 +142,33 @@ export function VideoStreamUpload() {
     }
   }, [youtubeUrl, setError]);
 
-  const stopStreaming = useCallback(() => {
+  const stopStreaming = useCallback(async () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        // Send stop message to backend
+        wsRef.current.send(JSON.stringify({ type: 'stop' }));
+        // Wait a bit to ensure backend receives the message before closing
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error('Error sending stop message:', error);
+      }
+    }
+    
+    // Close WebSocket connection
     if (wsRef.current) {
-      wsRef.current.send(JSON.stringify({ type: 'stop' }));
       wsRef.current.close();
       wsRef.current = null;
     }
+    
+    // Clear canvas
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       }
     }
+    
+    // Reset state
     setIsStreaming(false);
     setFps(0);
     setDetectionCount(0);

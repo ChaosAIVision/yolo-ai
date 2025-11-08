@@ -2,6 +2,9 @@
 import os
 import torch
 from ultralytics import YOLO
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 
@@ -34,6 +37,7 @@ from src.config import (
     BENTO_SERVICE_NAME,
     BENTO_MODEL_NAME,
     CLASS_NAMES,
+    TRITON_URL,
     logger,
 )
 
@@ -55,9 +59,29 @@ class YOLOONNXRunnable(Runnable):
         except Exception:
             pass
         
-        model_path = model_path or MODEL_WEIGHTS_PATH
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model weights not found: {model_path}")
+        # Determine model source: Triton URL or local file path
+        if TRITON_URL:
+            model_source = TRITON_URL
+            # Only add http:// if missing protocol
+            if not model_source.startswith(('http://', 'https://')):
+                model_source = f"http://{model_source}"
+            
+            # Warn if using gRPC port (7001) instead of HTTP port (7000)
+            if ':7001' in model_source and '/yolo' not in model_source.lower():
+                logger.warning(
+                    f"TRITON_URL uses port 7001 (gRPC). YOLO needs HTTP port 7000. "
+                    f"Consider using: {model_source.replace(':7001', ':7000')}/yolo"
+                )
+            
+            logger.info(f"Loading YOLO model from Triton Server: {model_source}")
+            self.is_onnx = True  # Triton typically serves ONNX models
+        else:
+            model_path = model_path or MODEL_WEIGHTS_PATH
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"Model weights not found: {model_path}")
+            model_source = model_path
+            logger.info(f"Loading YOLO model from local file: {model_source}")
+            self.is_onnx = model_path.lower().endswith('.onnx')
         
         # Clear CUDA cache before loading model
         if torch.cuda.is_available():
@@ -70,22 +94,16 @@ class YOLOONNXRunnable(Runnable):
                 logger.info(f"  GPU {i}: {torch.cuda.get_device_name(i)}")
                 logger.info(f"    Memory: {torch.cuda.get_device_properties(i).total_memory / 1024**3:.2f} GB")
         
-        # Use cuda:1 (when CUDA_VISIBLE_DEVICES=1, GPU 1 becomes cuda:0 in this process)
+        # Use cuda:0 (when CUDA_VISIBLE_DEVICES is set, specified GPU becomes cuda:0)
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
         device_idx = 0 if device.startswith("cuda") else None
         
-        # Check if model is ONNX format
-        is_onnx = model_path.lower().endswith('.onnx')
-        logger.info(f"Loading YOLO model from: {model_path} on device: {device} (ONNX: {is_onnx})")
-        
-        self.model = YOLO(model_path)
+        # Load model - YOLO supports both file paths and Triton HTTP URLs
+        self.model = YOLO(model_source, task="detect")
         
         # ONNX models don't support .fuse() or .to(device)
         # Only apply these for PyTorch models
-        if not is_onnx:
-            if hasattr(self.model, "fuse"):
-                self.model.fuse()
-            self.model.to(device)
+      
         
         # Log memory usage after loading
         if torch.cuda.is_available() and device_idx is not None:
@@ -96,17 +114,16 @@ class YOLOONNXRunnable(Runnable):
         self.class_names = CLASS_NAMES
         self.device_idx = device_idx
         self.device = device
-        self.is_onnx = is_onnx
         self._warmup()
     
     def _warmup(self):
         """Warm up the model with dummy input."""
         dummy = np.zeros((640, 640, 3), dtype=np.uint8)
         # For ONNX models, pass device directly to predict()
-        if self.is_onnx:
-            _ = self.model.predict(dummy, device=self.device_idx if self.device_idx is not None else "cpu", verbose=False)
-        else:
-            _ = self.model.predict(dummy, verbose=False)
+        # if self.is_onnx:
+        #     _ = self.model.predict(dummy, device=self.device_idx if self.device_idx is not None else "cpu", verbose=False)
+        # else:
+        #     _ = self.model.predict(dummy, verbose=False)
         logger.info("Model warm-up completed")
     
     @Runnable.method(batchable=True, batch_dim=(0, 0))
@@ -168,9 +185,9 @@ class YOLOONNXRunnable(Runnable):
 
 def create_bentoml_service(model_path: str = None):
     """Create and return BentoML service."""
-    model_path = model_path or MODEL_WEIGHTS_PATH
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model weights not found: {model_path}")
+    model_path =  MODEL_WEIGHTS_PATH
+    # if not os.path.exists(model_path):
+        # raise FileNotFoundError(f"Model weights not found: {model_path}")
     
     runner = Runner(
         YOLOONNXRunnable,
@@ -223,10 +240,8 @@ def _validate_image(img: Image.Image) -> tuple:
 
 
 if __name__ == "__main__":
-    # import sys
-    # model_path = sys.argv[1] if len(sys.argv) > 1 else None
-
-    model_path = os.getenv("TRITON_URL")
+    # Use TRITON_URL if set, otherwise use MODEL_WEIGHTS_PATH
+    model_path = None  # Will use MODEL_WEIGHTS_PATH from config if TRITON_URL is not set
     
     svc = create_bentoml_service(model_path)
     logger.info(f"BentoML service created: {BENTO_SERVICE_NAME}")

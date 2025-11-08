@@ -238,6 +238,7 @@ async def websocket_youtube_stream(request: web.Request):
 
     youtube_url = None
     streamer = None
+    should_stop = False  # Flag to stop streaming
 
     try:
         # Receive YouTube URL from client
@@ -263,20 +264,43 @@ async def websocket_youtube_stream(request: web.Request):
                     }))
                     break
                 elif data.get("type") == "stop":
+                    logger.info("Received stop signal from client")
+                    should_stop = True
                     break
             elif msg.type == WSMsgType.ERROR:
                 logger.error(f"WebSocket error: {ws.exception()}")
                 break
 
         # Stream frames
-        if streamer:
+        if streamer and not should_stop:
             frame_interval = 1.0 / FPS_LIMIT
             last_frame_time = time.time()
             
-            while not ws.closed:
+            # Create a task to listen for stop messages while streaming
+            async def listen_for_stop():
+                nonlocal should_stop
+                try:
+                    async for msg in ws:
+                        if msg.type == WSMsgType.TEXT:
+                            data = json.loads(msg.data)
+                            if data.get("type") == "stop":
+                                logger.info("Received stop signal during streaming")
+                                should_stop = True
+                                break
+                except Exception:
+                    pass  # WebSocket closed
+            
+            # Start listening for stop messages in background
+            listen_task = asyncio.create_task(listen_for_stop())
+            
+            while not ws.closed and not should_stop:
                 current_time = time.time()
                 if current_time - last_frame_time >= frame_interval:
                     frame = await streamer.get_frame()
+                    
+                    # Check stop flag before processing
+                    if should_stop:
+                        break
                     
                     # Verify frame shape before encoding
                     if frame.shape != (streamer.height, streamer.width, 3):
@@ -294,14 +318,26 @@ async def websocket_youtube_stream(request: web.Request):
                     
                     frame_base64 = base64.b64encode(buffer).decode('utf-8')
                     
-                    await ws.send_str(json.dumps({
-                        "type": "frame",
-                        "data": frame_base64
-                    }))
+                    try:
+                        await ws.send_str(json.dumps({
+                            "type": "frame",
+                            "data": frame_base64
+                        }))
+                    except Exception:
+                        # WebSocket closed, stop streaming
+                        should_stop = True
+                        break
                     
                     last_frame_time = current_time
                 else:
                     await asyncio.sleep(0.01)  # Small sleep to avoid busy waiting
+            
+            # Cancel the listen task
+            listen_task.cancel()
+            try:
+                await listen_task
+            except asyncio.CancelledError:
+                pass
 
     except Exception as e:
         logger.error(f"Error in WebSocket stream: {e}")
