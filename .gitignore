@@ -108,4 +108,5 @@ uploads/
 temp/
 tmp/
 
-
+# onnx weights
+*.onnx
