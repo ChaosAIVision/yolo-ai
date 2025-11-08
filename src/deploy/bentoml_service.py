@@ -223,8 +223,10 @@ def _validate_image(img: Image.Image) -> tuple:
 
 
 if __name__ == "__main__":
-    import sys
-    model_path = sys.argv[1] if len(sys.argv) > 1 else None
+    # import sys
+    # model_path = sys.argv[1] if len(sys.argv) > 1 else None
+
+    model_path = os.getenv("TRITON_URL")
     
     svc = create_bentoml_service(model_path)
     logger.info(f"BentoML service created: {BENTO_SERVICE_NAME}")
