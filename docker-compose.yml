@@ -1,0 +1,57 @@
+services:
+  triton-yolo:
+    image: nvcr.io/nvidia/tritonserver:24.09-py3
+    container_name: triton-yolo
+    restart: unless-stopped
+    
+    # GPU access
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Ports
+    ports:
+      - "7000:8000"   # HTTP
+      - "7001:8001"   # gRPC
+      - "7002:8002"   # Metrics
+    
+    # Mount model repository
+    volumes:
+      - ./src/triton_config/model_repository:/models:ro
+    
+    # Triton server command
+    command: >
+      tritonserver
+      --model-repository=/models
+      --strict-model-config=false
+      --log-verbose=1
+      --exit-on-error=false
+      --model-control-mode=poll
+      --repository-poll-secs=30
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    # Environment variables
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    
+    # Shared memory for better performance
+    shm_size: '2gb'
+    
+    # Network mode
+    network_mode: bridge
+
+networks:
+  default:
+    name: triton-network
