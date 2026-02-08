@@ -91,6 +91,14 @@ logs/
 # BentoML
 .bento/
 bentoml/
+# Keep bentoml directory but ignore contents
+bentoml/*
+!bentoml/.gitkeep
+
+# Checkpoints
+checkpoints/
+checkpoints/*
+!checkpoints/.gitkeep
 
 # Jupyter Notebook
 .ipynb_checkpoints

@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useDetectionStore } from '@/store/detectionStore';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8005';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'http://localhost:5000');
 
 export function VideoStreamUpload() {
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -52,8 +52,20 @@ export function VideoStreamUpload() {
 
     try {
       // Connect to WebSocket
-      const wsUrl = API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://');
-      const ws = new WebSocket(`${wsUrl}/ws/youtube`);
+      // In dev mode, use proxy (ws://localhost:8080/ws/youtube)
+      // In production, use API_BASE_URL
+      let wsUrl: string;
+      if (import.meta.env.DEV || !API_BASE_URL) {
+        // Dev mode: use proxy via Vite dev server
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${protocol}//${window.location.host}/ws/youtube`;
+      } else {
+        // Production: use API_BASE_URL
+        wsUrl = API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/youtube';
+      }
+      
+      console.log('Connecting to WebSocket:', wsUrl);
+      const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {

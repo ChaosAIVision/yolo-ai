@@ -417,26 +417,134 @@ async def upload_image(request: web.Request) -> web.Response:
 
 
 async def cors_middleware(app, handler):
-    """Simple CORS middleware."""
+    """Simple CORS middleware with WebSocket support."""
     async def middleware_handler(request):
+        # Handle WebSocket upgrade requests
+        if request.headers.get("Upgrade", "").lower() == "websocket":
+            # For WebSocket, just pass through - CORS is handled at connection level
+            return await handler(request)
+        
         if request.method == "OPTIONS":
             response = web.Response()
             response.headers["Access-Control-Allow-Origin"] = "*"
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
         
         response = await handler(request)
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
         return response
     return middleware_handler
+
+
+async def health_check(request):
+    """Health check endpoint."""
+    return web.json_response({"status": "ok", "service": "yolo-api"})
+
+
+async def root_handler(request):
+    """Root endpoint - API information."""
+    return web.json_response({
+        "service": "yolo-api",
+        "version": "1.0",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "api_health": "/api/health",
+            "upload": "/api/v1/upload",
+            "websocket": "/ws/youtube",
+            "docs": "/docs"
+        },
+        "docs": "Access /docs for API documentation"
+    })
+
+
+async def docs_handler(request):
+    """API documentation endpoint."""
+    docs = {
+        "service": "YOLO AI API",
+        "version": "1.0",
+        "description": "Real-time object detection API using YOLOv8",
+        "base_url": "http://localhost:5000",
+        "endpoints": {
+            "GET /": {
+                "description": "API information",
+                "response": {
+                    "service": "yolo-api",
+                    "version": "1.0",
+                    "status": "running",
+                    "endpoints": "Object containing all available endpoints"
+                }
+            },
+            "GET /health": {
+                "description": "Health check endpoint",
+                "response": {
+                    "status": "ok",
+                    "service": "yolo-api"
+                }
+            },
+            "GET /api/health": {
+                "description": "Health check endpoint (for proxy compatibility)",
+                "response": {
+                    "status": "ok",
+                    "service": "yolo-api"
+                }
+            },
+            "POST /api/v1/upload": {
+                "description": "Upload image for object detection",
+                "request": {
+                    "method": "POST",
+                    "content_type": "multipart/form-data",
+                    "body": {
+                        "image": "Image file (JPEG, PNG)"
+                    }
+                },
+                "response": {
+                    "content_type": "image/jpeg or image/png",
+                    "body": "Annotated image with bounding boxes"
+                }
+            },
+            "GET /ws/youtube": {
+                "description": "WebSocket endpoint for YouTube video streaming with detection",
+                "protocol": "WebSocket",
+                "request": {
+                    "url": "YouTube video URL"
+                },
+                "response": {
+                    "type": "WebSocket messages",
+                    "format": "JSON with detection results"
+                }
+            },
+            "GET /docs": {
+                "description": "API documentation (this endpoint)"
+            }
+        },
+        "examples": {
+            "health_check": "curl http://localhost:5000/health",
+            "upload_image": "curl -X POST -F 'image=@image.jpg' http://localhost:5000/api/v1/upload -o result.jpg",
+            "websocket": "Connect to ws://localhost:5000/ws/youtube?url=<youtube_url>"
+        },
+        "cors": {
+            "enabled": True,
+            "allowed_origins": "*",
+            "allowed_methods": ["GET", "POST", "OPTIONS"],
+            "allowed_headers": ["Content-Type"]
+        }
+    }
+    return web.json_response(docs)
 
 
 def create_app() -> web.Application:
     """Create and configure aiohttp application."""
     app = web.Application(middlewares=[cors_middleware])
+    app.router.add_get("/", root_handler)
+    app.router.add_get("/docs", docs_handler)
+    app.router.add_get("/health", health_check)
+    app.router.add_get("/api/health", health_check)  # For proxy compatibility
     app.router.add_get("/ws/youtube", websocket_youtube_stream)
     app.router.add_post("/api/v1/upload", upload_image)
     return app

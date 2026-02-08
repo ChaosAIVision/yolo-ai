@@ -1,0 +1,61 @@
+# Dockerfile for Backend API with torch CPU and BentoML
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies including Node.js
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    curl \
+    build-essential \
+    libglib2.0-0 \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20.x
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install PyTorch CPU version
+RUN pip3 install --no-cache-dir \
+    torch==2.1.0 \
+    torchvision==0.16.0 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install other dependencies
+RUN pip3 install --no-cache-dir \
+    ultralytics \
+    pillow==10.4.0 \
+    numpy==1.26.4 \
+    opencv-python-headless==4.10.0.84 \
+    bentoml>=1.0.0 \
+    aiohttp \
+    python-dotenv \
+    onnxruntime \
+    yt-dlp \
+    && pip3 install --no-cache-dir --upgrade pip
+
+# Copy project files
+COPY . /app/
+
+# Install frontend dependencies (if app directory exists)
+WORKDIR /app/app
+RUN if [ -f "package.json" ]; then \
+    npm install; \
+    fi
+WORKDIR /app
+
+# Set Python path
+ENV PYTHONPATH=/app:$PYTHONPATH
+
+# Expose ports
+# - 3000: BentoML API
+# - 8000: Backend API
+# - 8080: UI (if needed)
+
+# Default command (will be overridden in docker-compose)
+CMD ["/bin/bash"]
+

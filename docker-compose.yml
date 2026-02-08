@@ -1,8 +1,54 @@
 services:
+  # Service 1: Quantization service (runs once to quantize and setup model repository)
+  quantization:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.triton-quantization
+      tags:
+        - yolo-ai-quantization:latest
+    image: yolo-ai-quantization:latest
+    container_name: yolo-quantization
+    restart: "no"
+    profiles:
+      - quantization
+    
+    # GPU access for quantization
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Mount volumes
+    volumes:
+      - ./weights:/workspace/weights
+      - ./src/triton_config/model_repository:/workspace/model_repository
+      - .:/workspace
+    
+    # Environment variables
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - QUANTIZATION_TYPE=${QUANTIZATION_TYPE:-onnx}
+      - MODEL_WEIGHTS_PATH=/workspace/weights
+      - ONNX_OUTPUT_DIR=/workspace/weights
+      - TRITON_MODEL_REPOSITORY=/workspace/model_repository
+      - PYTHONPATH=/workspace
+    
+    # Run quantization script
+    command: bash /workspace/scripts/quantize_in_container.sh
+    
+    networks:
+      - yolo-network
+
+  # Service 2: Triton Inference Server
+  # Reuse quantization image to save space (already has all dependencies)
   triton-yolo:
-    image: nvcr.io/nvidia/tritonserver:24.09-py3
+    image: yolo-ai-quantization:latest
     container_name: triton-yolo
     restart: unless-stopped
+    # Note: No depends_on quantization since quantization runs once via profile
     
     # GPU access
     deploy:
@@ -23,7 +69,7 @@ services:
     volumes:
       - ./src/triton_config/model_repository:/models:ro
     
-    # Triton server command
+    # Triton server command (tritonserver is available in base image)
     command: >
       tritonserver
       --model-repository=/models
@@ -49,9 +95,48 @@ services:
     # Shared memory for better performance
     shm_size: '2gb'
     
-    # Network mode
-    network_mode: bridge
+    networks:
+      - yolo-network
+
+  # Service 3: Backend API with BentoML and API services
+  backend:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.backend
+    container_name: yolo-backend
+    restart: unless-stopped
+    depends_on:
+      - triton-yolo
+    
+    # Ports
+    ports:
+      - "3000:3000"   # BentoML API
+      - "5000:5000"   # Backend API (changed from 6000:8000 to avoid Chrome unsafe port and Triton conflict)
+      - "7070:8080"   # UI (if needed)
+    
+    # Mount volumes
+    volumes:
+      - .:/app
+      - ./weights:/app/weights
+      - ./bentoml:/root/bentoml  # Mount BentoML checkpoint/data to host
+      - ./checkpoints:/app/checkpoints  # Mount checkpoints directory
+    
+    # Environment variables
+    environment:
+      - PYTHONPATH=/app
+      - BENTO_ENDPOINT_URL=http://localhost:3000
+      - TRITON_URL=http://triton-yolo:8000
+      - MODEL_WEIGHTS_PATH=/app/weights
+      - ONNX_OUTPUT_DIR=/app/weights
+      - LOG_LEVEL=INFO
+    
+    # Run startup script
+    command: bash /app/scripts/start_backend.sh
+    
+    networks:
+      - yolo-network
 
 networks:
-  default:
-    name: triton-network
+  yolo-network:
+    name: yolo-network
+    driver: bridge

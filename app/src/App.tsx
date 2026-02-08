@@ -21,7 +21,7 @@ function App() {
               </p>
             </div>
             <div className="text-sm text-muted-foreground">
-              API: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8005'}
+              API: {import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:5000')}
             </div>
           </div>
         </div>
